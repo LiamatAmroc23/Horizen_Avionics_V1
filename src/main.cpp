@@ -2,9 +2,13 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 #include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
 
 #define SEALEVELPRESSURE_HPA (1013.25)
+const int chipSelect = 10;
 
+int packet[4];
 float cur;
 float prev;
 float altZ;
@@ -14,7 +18,6 @@ int i;
 int a;
 int samp = 100;
 int average();
-
 Adafruit_BMP3XX bmp;
 
 void setup() {
@@ -29,10 +32,15 @@ void setup() {
   bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-  bmp.setOutputDataRate(BMP3_ODR_50_HZ);
+  bmp.setOutputDataRate(BMP3_ODR_100_HZ);
   Serial.print("Sampling...");
   if(!bmp.performReading()){
     Serial.println("Sample Failed! Check wiring and reset chip");
+    return;
+  }
+  Serial.print("initializing SD...");
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed! Check if inserted");
     return;
   }
   delay(1000);
@@ -44,6 +52,18 @@ void setup() {
   Serial.println("Temp(C)  Pressure(HPA)  Altitude (M)");
 }
 
+String arrayToString(int *array, int size) {
+  String result = "";
+
+  for (int i = 0; i < size; i++) {
+    result += String(array[i]);
+    if (i < size - 1) {
+      result += ","; // Add comma separator except for the last element
+    }
+  }
+
+  return result;
+}
 
 void loop() {
   for(int a = 1; a < samp; a++){
@@ -55,13 +75,22 @@ void loop() {
   if(cur > apogee){
   apogee = cur;  
  }
-  Serial.print(bmp.temperature);
-  Serial.print(",");
-  Serial.print(bmp.pressure / 100.0);
-  Serial.print(",");\
-  Serial.print(sum);
-  Serial.print(",");
-  Serial.println(apogee);
+ File dataFile = SD.open("datalog.txt", FILE_WRITE);
+
+  packet[0]=bmp.temperature;
+  packet[1]=bmp.pressure / 100.0;
+  packet[2]=sum;
+  packet[3]=apogee;
+  int arraySize = sizeof(packet) / sizeof(packet[0]);
+
+  String result = arrayToString(packet, arraySize);
+
+  if(dataFile){
+    dataFile.println(result);
+    Serial.println(result);
+    dataFile.close();
+  }
+
   delay(1);
   sum = 0;
 }
