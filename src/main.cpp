@@ -8,15 +8,18 @@
 #define SEALEVELPRESSURE_HPA (1013.25)
 const int chipSelect = 10;
 
-int packet[4];
+float packet[6];
 float cur;
 float prev;
 float altZ;
 float sum;
 float apogee = 0;
+float speed;
+float tim;
+float dis;
 int i;
 int a;
-int samp = 100;
+int samp = 10;
 int average();
 Adafruit_BMP3XX bmp;
 
@@ -52,7 +55,7 @@ void setup() {
   Serial.println("Temp(C)  Pressure(HPA)  Altitude (M)");
 }
 
-String arrayToString(int *array, int size) {
+String arrayToString(float *array, int size) {
   String result = "";
 
   for (int i = 0; i < size; i++) {
@@ -72,15 +75,23 @@ void loop() {
   sum = sum / samp;
   prev = cur;
   cur = sum;
+
+  tim = tim + .1;
+  dis = cur - prev;
+  speed = dis / tim;
+
+
   if(cur > apogee){
   apogee = cur;  
  }
  File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
-  packet[0]=bmp.temperature;
-  packet[1]=bmp.pressure / 100.0;
-  packet[2]=sum;
-  packet[3]=apogee;
+  packet[0]=tim;
+  packet[1]=bmp.temperature;
+  packet[2]=bmp.pressure / 100.0;
+  packet[3]=sum;
+  packet[4]=apogee;
+  packet[5]=speed;
   int arraySize = sizeof(packet) / sizeof(packet[0]);
 
   String result = arrayToString(packet, arraySize);
@@ -91,6 +102,6 @@ void loop() {
     dataFile.close();
   }
 
-  delay(1);
+  delay(10);
   sum = 0;
 }
