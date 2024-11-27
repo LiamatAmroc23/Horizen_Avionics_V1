@@ -1,3 +1,6 @@
+//Horizen Avionics V0.5
+//Uses a micro SD Card adapter and a BMP390
+//Created by Liam Gessman
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
