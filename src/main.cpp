@@ -1,4 +1,4 @@
-//Horizen Avionics V0.5
+//Horizen Avionics V0.9
 //Uses a micro SD Card adapter and a BMP390
 //Created by Liam Gessman
 #include <Arduino.h>
@@ -11,6 +11,11 @@
 #define SEALEVELPRESSURE_HPA (1013.25)
 //chip select for your SD card reader
 const int chipSelect = 10;
+
+const int mainChute = 6;
+const int drougeChute = 7;
+
+const int mainDeploy = 300;
 
 float packet[6];
 //data packet array
@@ -27,8 +32,10 @@ float speed;
 float tim;
 float dis;
 //for speed
+int r;
 int i;
 int a;
+
 //for for loops
 int samp = 10;
 //change this for number of samples for altitude average
@@ -41,7 +48,7 @@ Adafruit_BMP3XX bmp;
 void setup() {
   Serial.begin(9600);
   while(!Serial);
-  Serial.println("Horizen OS V0.1");
+  Serial.println("Horizen OS V0.9");
   delay(500);
   if(!bmp.begin_I2C()) {
     Serial.println("BMP390 Not found!");
@@ -72,6 +79,8 @@ void setup() {
   }
 
   Serial.println("Time(sec)  Temp(C)  Pressure(HPA)  Altitude (F) ");
+  pinMode(drougeChute, OUTPUT);
+  pinMode(mainChute, OUTPUT);
 }
 
 String arrayToString(float *array, int size) {
@@ -103,6 +112,18 @@ void loop() {
   if(cur > apogee){
   apogee = cur;  
  }
+  if(cur < apogee)
+{
+  digitalWrite(drougeChute, HIGH);
+  delay(2000);
+  digitalWrite(drougeChute, LOW);
+}
+  if(cur < apogee && cur < mainDeploy)
+  {
+  digitalWrite(mainChute, HIGH);
+  delay(2000);
+  digitalWrite(mainChute, LOW);
+  }
  File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
   packet[0]=tim;
