@@ -4,23 +4,35 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-
+//set to your local pressure (zeros out altitude so doesn't really matter)
 #define SEALEVELPRESSURE_HPA (1013.25)
+//chip select for your SD card reader
 const int chipSelect = 10;
 
 float packet[6];
+//data packet array
 float cur;
 float prev;
+//altitude variables for distance and apogee
 float altZ;
+//altitude zero
 float sum;
+//averaged altitude
 float apogee = 0;
+
 float speed;
 float tim;
 float dis;
+//for speed
 int i;
 int a;
+//for for loops
 int samp = 10;
+//change this for number of samples for altitude average
 int average();
+//averaging function
+
+
 Adafruit_BMP3XX bmp;
 
 void setup() {
@@ -36,6 +48,8 @@ void setup() {
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   bmp.setOutputDataRate(BMP3_ODR_100_HZ);
+
+  //tests sd card and BMP390
   Serial.print("Sampling...");
   if(!bmp.performReading()){
     Serial.println("Sample Failed! Check wiring and reset chip");
@@ -47,12 +61,14 @@ void setup() {
     return;
   }
   delay(1000);
+  //zeros altitude measure ment
   Serial.println("Zeroing Altitude...");
   for (int i = 1; i<samp; i++){
      altZ = bmp.readAltitude(SEALEVELPRESSURE_HPA)*3.28;
      prev = 0;
   }
-  Serial.println("Temp(C)  Pressure(HPA)  Altitude (M)");
+
+  Serial.println("Time(sec)  Temp(C)  Pressure(HPA)  Altitude (F) ");
 }
 
 String arrayToString(float *array, int size) {
@@ -87,7 +103,7 @@ void loop() {
  File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
   packet[0]=tim;
-  packet[1]=bmp.temperature;
+  packet[1]=(bmp.temperature * 9/5) + 32;
   packet[2]=bmp.pressure / 100.0;
   packet[3]=sum;
   packet[4]=apogee;
