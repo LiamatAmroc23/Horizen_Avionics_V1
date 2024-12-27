@@ -14,6 +14,7 @@ const int chipSelect = 10;
 
 const int mainChute = 6;
 const int drougeChute = 7;
+const int 
 
 const int mainDeploy = 300;
 
@@ -35,6 +36,8 @@ float dis;
 int r;
 int i;
 int a;
+
+int dig[4];
 
 //for for loops
 int samp = 10;
@@ -81,6 +84,7 @@ void setup() {
   Serial.println("Time(sec)  Temp(C)  Pressure(HPA)  Altitude (F) ");
   pinMode(drougeChute, OUTPUT);
   pinMode(mainChute, OUTPUT);
+  pinMode(BUILTIN_LED)
 }
 
 String arrayToString(float *array, int size) {
@@ -94,6 +98,10 @@ String arrayToString(float *array, int size) {
   }
 
   return result;
+}
+int Pulse(int limit){
+
+
 }
 
 void loop() {
@@ -112,17 +120,17 @@ void loop() {
   if(cur > apogee){
   apogee = cur;  
  }
-  if(cur < apogee)
+  if(cur < apogee && cur > 1000)
 {
-  digitalWrite(drougeChute, HIGH);
-  delay(2000);
-  digitalWrite(drougeChute, LOW);
+  //digitalWrite(drougeChute, HIGH);
+  //delay(2000);
+  //digitalWrite(drougeChute, LOW);
 }
   if(cur < apogee && cur < mainDeploy)
   {
-  digitalWrite(mainChute, HIGH);
-  delay(2000);
-  digitalWrite(mainChute, LOW);
+  //digitalWrite(mainChute, HIGH);
+  //delay(2000);
+  //digitalWrite(mainChute, LOW);
   }
  File dataFile = SD.open("datalog.txt", FILE_WRITE);
 
