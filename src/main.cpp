@@ -5,11 +5,16 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 #include <Adafruit_MPU6050.h>
+#include <TinyGPSPlus.h>
+#include <SoftwareSerial.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
 //set to your local pressure (zeros out altitude so doesn't really matter)
 #define SEALEVELPRESSURE_HPA (1013.25)
+
+static const int RXPin = 0, TXPin = 1;
+static const uint32_t GPSBaud = 9600;
 //chip select for your SD card reader
 const int chipSelect = 10;
 
@@ -18,8 +23,11 @@ const int drougeChute = 7;
 
 const int mainDeploy = 300;
 
-float packet[12];
+float packet[15];
 //data packet array
+float splt[5];
+float nsplt[5];
+
 float cur;
 float prev;
 //altitude variables for distance and apogee
@@ -44,23 +52,40 @@ float ax;
 float ay;
 float az;
 
+float lat;
+float lon;
+int sat;
+
 int dig[4];
 
 //for for loops
 int samp = 10;
 //change this for number of samples for altitude average
 int average();
+int pulse();
+int split(int pul); 
+int pack();
+int data();
 //averaging function
 
 
 Adafruit_BMP3XX bmp;
 Adafruit_MPU6050 mpu;
+TinyGPSPlus gps;
+SoftwareSerial gpsSerial(RXPin, TXPin);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  gpsSerial.begin(GPSBaud);
+  delay(3000);
   while(!Serial);
-  Serial.println("Horizen OS V0.9");
+  Serial.println("Horizen OS V1.5");
   delay(500);
+  if (millis() > 5000 && gps.charsProcessed() < 10)
+  {
+    Serial.println(F("No GPS detected: check wiring."));
+    return;
+  }
   if(!bmp.begin_I2C()) {
     Serial.println("BMP390 Not found!");
     while(true);
@@ -69,6 +94,8 @@ void setup() {
     Serial.println("Failed to find MPU6050!");
     while(true);
   }
+  delay(5000);
+
   bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
   bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
   bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
@@ -159,20 +186,57 @@ void setup() {
 
 String arrayToString(float *array, int size) {
   String result = "";
-
   for (int i = 0; i < size; i++) {
-    result += String(array[i]);
-    if (i < size - 1) {
-      result += ","; // Add comma separator except for the last element
-    }
+      result += String(array[i], 6); // Ensure 6 decimal places
+      if (i < size - 1) {
+          result += ","; // Add comma separator except for the last element
+      }
   }
-
   return result;
+}
+
+
+int split(int pul){
+  
+  int n = 0;
+  int r = pul;
+  int t = pul;
+  int digits = 0; while (t != 0) { t /= 10; digits++; }
+    while(r != 0){
+      splt[n] = r % 10;
+      r = r / 10;
+      n += 1;
+    }
+    n = 0;
+    while(digits != 0){
+      nsplt[t] = splt[n];
+      Serial.println(nsplt[t]);
+      t -= 1;
+      n += 1;
+
+    }
+
+
+}
+int pulse(){
+
+}
+int pack(){
+
+}
+int data(){
+
 }
 
 void loop() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
+
+  while (gpsSerial.available()) {
+    gps.encode(gpsSerial.read());
+}
+
+  //split(1234);
   
   for(int a = 1; a < samp; a++){
     sum = sum + bmp.readAltitude(SEALEVELPRESSURE_HPA)*3.28 -altZ;
@@ -191,6 +255,25 @@ void loop() {
   ax = a.acceleration.x;
   ay = a.acceleration.y;
   az = a.acceleration.z;
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 1000) {
+    lastUpdate = millis();
+    if (gps.location.isUpdated()){
+      lat = (gps.location.lat());
+      lon = (gps.location.lng());
+    } else {
+      lat = -1;
+      lon = -1;
+    }
+    if (gps.satellites.isUpdated()){
+      sat = (gps.satellites.value());
+    }
+  }
+    
+
+  
+
+  
 
 
   if(cur > apogee){
@@ -222,13 +305,16 @@ void loop() {
   packet[9]=ax;
   packet[10]=ay;
   packet[11]=az;
+  packet[12]=(lat);
+  packet[13]=(lon);
+  packet[14]=sat;
 
   int arraySize = sizeof(packet) / sizeof(packet[0]);
 
   String result = arrayToString(packet, arraySize);
 
   if(dataFile){
-    dataFile.println(result);
+    //dataFile.println(result);
     Serial.println(result);
     dataFile.close();
   }
